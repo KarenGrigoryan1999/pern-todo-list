@@ -1,30 +1,50 @@
+import React from 'react'
 import { Provider } from 'react-redux';
+import thunk, { ThunkDispatch } from 'redux-thunk';
 import { render, screen } from '@testing-library/react';
+import configureMockStore from 'redux-mock-store';
 import '@testing-library/jest-dom/extend-expect';
 import '@testing-library/jest-dom';
-
-import React from 'react'
 import CardList from '../../components/CardList/CardList';
-import store from '../../store';
-global.React = React
+import { LOADING_STATUS } from '../../store/constants';
 
 describe('Компонент списка заметок', () => {
-    test('Проверка прогрессбара в момент загрузки', () => {
-        render(
-            <Provider store={store}>
-                <CardList />
-            </Provider>
-        );
-        const loader = screen.getByRole('progressbar');
-        expect(loader).toBeInTheDocument();
+    const middlewares = [thunk];
+    const mockStore = configureMockStore<AppState, ThunkDispatch<AppState, any, any>>(middlewares);
+
+    beforeAll(() => {
+        global.React = React;
     });
-    test('Проверка заметок после полной прогрузки', async () => {
+
+    test('Загрузка заметок из стора', async () => {
+        let testStore = mockStore({
+            itemsReducer: {
+                items: [],
+                loadingStatus: LOADING_STATUS.SUCCESS
+            }
+        });
         render(
-            <Provider store={store}>
+            <Provider store={testStore}>
                 <CardList />
             </Provider>
         );
-        const loader = await screen.findByText(/Все заметки загружены!/i);
+        const notesLoadedText = await screen.findByText(/Все заметки загружены!/i);
+        expect(notesLoadedText).toBeInTheDocument();
+    });
+    
+    test('Неудачная загрузка заметок из стора', async () => {
+        let testStore = mockStore({
+            itemsReducer: {
+                items: null,
+                loadingStatus: LOADING_STATUS.ERROR
+            }
+        });
+        render(
+            <Provider store={testStore}>
+                <CardList />
+            </Provider>
+        );
+        const loader = await screen.findByRole(/progressbar/i);
         expect(loader).toBeInTheDocument();
     });
 })
